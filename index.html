@@ -150,6 +150,10 @@
   /* Revelar ao rolar */
   .js .revelar { opacity: 0; transform: translateY(32px); transition: opacity .9s var(--suave), transform .9s var(--suave); transition-delay: var(--atraso, 0s); }
   .js .revelar.visivel { opacity: 1; transform: none; }
+  /* títulos que surgem palavra por palavra (uma vez, ao aparecer na tela) */
+  .js .titulo-anim .pm { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .12em; margin-bottom: -.12em; }
+  .js .titulo-anim .pt { display: inline-block; transform: translateY(105%); opacity: 0; transition: transform .9s var(--suave), opacity .6s ease; transition-delay: calc(var(--n) * 70ms); }
+  .js .titulo-anim.visivel .pt { transform: none; opacity: 1; }
 
   /* Seções — alternam marrom / branco */
   section { padding: 120px 0; }
@@ -352,6 +356,7 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
     .js .revelar { opacity: 1; transform: none; }
+    .js .titulo-anim .pt { opacity: 1; transform: none; }
   }
 
   /* Tablet */
@@ -808,6 +813,27 @@
   hamburguer.addEventListener('click', () => menu(!document.body.classList.contains('menu-aberto')));
   linksMenu.forEach(a => a.addEventListener('click', () => menu(false)));
 
+  // Títulos das seções: cada palavra numa máscara, para subir em sequência
+  document.querySelectorAll('h2.revelar').forEach(h2 => {
+    let n = 0;
+    (function quebrar(no) {
+      [...no.childNodes].forEach(filho => {
+        if (filho.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          filho.textContent.split(/(\s+)/).forEach(parte => {
+            if (!parte) return;
+            if (/^\s+$/.test(parte)) { frag.appendChild(document.createTextNode(' ')); return; }
+            const m = document.createElement('span'); m.className = 'pm';
+            const s = document.createElement('span'); s.className = 'pt'; s.style.setProperty('--n', n++); s.textContent = parte;
+            m.appendChild(s); frag.appendChild(m);
+          });
+          filho.replaceWith(frag);
+        } else if (filho.nodeType === 1) quebrar(filho);
+      });
+    })(h2);
+    h2.classList.replace('revelar', 'titulo-anim');
+  });
+
   // Revelar elementos ao rolar e contar os números
   const observador = new IntersectionObserver(entradas => {
     entradas.forEach(e => {
@@ -817,7 +843,7 @@
       observador.unobserve(e.target);
     });
   }, { threshold: .15, rootMargin: '0px 0px -40px 0px' });
-  document.querySelectorAll('.revelar, #passos').forEach(el => observador.observe(el));
+  document.querySelectorAll('.revelar, .titulo-anim, #passos').forEach(el => observador.observe(el));
   function contar(el) {
     const alvo = +el.dataset.contar, sufixo = alvo >= 10 ? '+' : '', inicio = performance.now();
     (function passo(t) {
